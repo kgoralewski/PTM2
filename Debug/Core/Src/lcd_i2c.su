@@ -1,0 +1,5 @@
+../Core/Src/lcd_i2c.c:29:6:delay_us	16	static
+../Core/Src/lcd_i2c.c:35:6:lcd_init	24	static
+../Core/Src/lcd_i2c.c:63:6:lcd_write	32	static
+../Core/Src/lcd_i2c.c:79:6:lcd_display	24	static
+../Core/Src/lcd_i2c.c:125:6:lcd_clear	24	static
