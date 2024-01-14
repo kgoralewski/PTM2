@@ -19,6 +19,7 @@
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
 #include "adc.h"
+#include "dma.h"
 #include "i2c.h"
 #include "tim.h"
 #include "usart.h"
@@ -30,11 +31,24 @@
 #include <string.h>
 #include <stdio.h>
 #include <stdbool.h>
+#include <stdlib.h>
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
 /* USER CODE BEGIN PTD */
+typedef enum
+{
+  STOP = 0,
+  RUN = 1
+} state_t;
 
+struct Motor {
+	int dir, actRpm, setRpm, count, actCount, lastCount, pwm, err, lastErr, temp;
+	bool overheat;
+	state_t state;
+	uint16_t tempRead;
+	double integral, derivative;
+} motor;
 /* USER CODE END PTD */
 
 /* Private define ------------------------------------------------------------*/
@@ -49,11 +63,9 @@
 
 #define TEMP_MIN 45
 #define TEMP_MAX 50
-/*
-#define KP 15.0
-#define KI 2.2
-#define KD 0.02
-*/
+
+#define RxBuffer_Size 10
+
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
@@ -64,14 +76,10 @@
 /* Private variables ---------------------------------------------------------*/
 
 /* USER CODE BEGIN PV */
+
+uint8_t RxBuffer[RxBuffer_Size];
 struct lcd_disp disp;
 
-struct Motor {
-	int dir, actRpm, setRpm, count, actCount, lastCount, pwm, err, lastErr, temp;
-	bool state, overheat;
-	uint16_t tempRead;
-	double integral, derivative;
-} motor;
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -84,12 +92,13 @@ void setDir();
 void temp();
 void pid();
 void countRPM();
+void procesData();
+void HAL_UARTEx_RxEventCallback(UART_HandleTypeDef *huart, uint16_t Size);
 void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim);
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
-
 
 /* USER CODE END 0 */
 
@@ -104,6 +113,14 @@ int main(void)
 	bool lastUpReading = 1;
 	bool lastDownReading = 1;
 	bool lastStartReading = 1;
+
+	motor.state = 0;
+	motor.dir = 1;
+	motor.setRpm = 0;
+	motor.overheat = 0;
+	disp.addr = (0x3f << 1);
+	disp.bl = true;
+
   /* USER CODE END 1 */
 
   /* MCU Configuration--------------------------------------------------------*/
@@ -124,22 +141,23 @@ int main(void)
 
   /* Initialize all configured peripherals */
   MX_GPIO_Init();
-  MX_USART2_UART_Init();
+  MX_DMA_Init();
   MX_TIM2_Init();
   MX_TIM16_Init();
   MX_TIM3_Init();
   MX_ADC2_Init();
   MX_I2C1_Init();
   MX_TIM1_Init();
+  MX_USART2_UART_Init();
   /* USER CODE BEGIN 2 */
 	HAL_TIM_Encoder_Start(&htim2, TIM_CHANNEL_ALL);
 	HAL_TIM_Base_Start(&htim1);
 	HAL_TIM_Base_Start_IT(&htim16);
 	HAL_TIM_PWM_Start(&htim3, TIM_CHANNEL_1);
 	HAL_ADC_Start(&hadc2);
+	HAL_UARTEx_ReceiveToIdle_DMA(&huart2, RxBuffer, RxBuffer_Size);
+	__HAL_DMA_DISABLE_IT(&hdma_usart2_rx, DMA_IT_HT);
 
-	disp.addr = (0x3f << 1);
-	disp.bl = true;
 	lcd_init(&disp);
 
 
@@ -147,10 +165,8 @@ int main(void)
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
-	motor.state = 0;
-	motor.dir = 1;
-	motor.setRpm = 0;
-	motor.overheat = 0;
+
+
 	while (1) {
 
 
@@ -266,75 +282,6 @@ void SystemClock_Config(void)
 }
 
 /* USER CODE BEGIN 4 */
-void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim) {
-	if (htim->Instance == TIM16) {
-		motor.actCount = __HAL_TIM_GET_COUNTER(&htim2);
-		countRPM();
-		pid();
-	}
-}
-/*
-void HAL_UARTEx_RxEventCallback(UART_HandleTypeDef *huart, uint16_t Size){
-	if(huart->Instance == USART2){
-		procesData();
-		HAL_UARTEx_ReceiveToIdle_DMA(&huart2, RxBuffer, RxBuffer_Size);
-		__HAL_DMA_DISABLE_IT(&hdma_usart2_rx, DMA_IT_HT);
-	}
-}
-*/
-/*void procesData(){
-	switch (RxBuffer[0]) {
-		case 'R':
-			machine.state = RUN;
-			sprintf((char*) TxBuffer, "Run\n");
-			break;
-		case 'S':
-			machine.state = STOP;
-			sprintf((char*) TxBuffer, "Stop\n");
-			break;
-		case 'L':
-			muscleMaxLength = atoi((const char*)RxBuffer+2);
-			if(muscleMaxLength > 600 || muscleMaxLength < 0 || state == RUN){
-				muscleMaxLength = 0;
-				sprintf((char*) TxBuffer, "Error\n");
-			}else{
-				sprintf((char*) TxBuffer, "Length\n");
-			}
-			break;
-		case 'A':
-			rpm = atoi((const char*)RxBuffer+2);
-			rpm = rpm/10;
-			if(rpm > 60 || rpm < 0 || machine.state == RUN){
-				rpm = 0;
-				sprintf((char*) TxBuffer, "Error\n");
-			}else {
-				sprintf((char*) TxBuffer, "Angle\n");
-
-			}
-			break;
-		case 'C':
-			machine.state = STOP;
-			pwm = 0;
-			muscleMaxLength = 0;
-			steps = 0;
-			sprintf((char*) TxBuffer, "Clear\n");
-			break;
-		case 'I':
-			sprintf((char*) TxBuffer, "Info \n");
-			HAL_UART_Transmit(&huart2,TxBuffer, strlen((const char*)TxBuffer),HAL_MAX_DELAY);
-			sprintf((char*) TxBuffer, "A: %d rpm\n", rpm * 10);
-			HAL_UART_Transmit(&huart2,TxBuffer, strlen((const char*)TxBuffer),HAL_MAX_DELAY);
-			sprintf((char*) TxBuffer, "L: %d mm\n", muscleMaxLength);
-			break;
-		default:
-			sprintf((char*) TxBuffer, "Unknown\n");
-			break;
-	}
-	HAL_UART_Transmit(&huart2,TxBuffer, strlen((const char*)TxBuffer),HAL_MAX_DELAY);
-	memset(TxBuffer, 0, sizeof(TxBuffer));
-	memset(RxBuffer, 0, sizeof(RxBuffer));
-}*/
-
 
 void displayNormal(){
 	char statusName[2][7] = {{"STOP  "}, {"START "}};
@@ -407,7 +354,38 @@ void countRPM(){
 		motor.actRpm =  motor.actRpm-1200;
 }
 
+    void procesData(){
+	switch (RxBuffer[0]) {
+		case 'R':
+			motor.state = RUN;
+			break;
+		case 'S':
+			motor.state = STOP;
+			break;
+		case 'P':
+			motor.setRpm = atoi((const char*)RxBuffer+2);
+			break;
+		default:
+			break;
+	}
+	memset(RxBuffer, 0, sizeof(RxBuffer));
+}
 
+void HAL_UARTEx_RxEventCallback(UART_HandleTypeDef *huart, uint16_t Size){
+	if(huart->Instance == USART2){
+		procesData();
+		HAL_UARTEx_ReceiveToIdle_DMA(&huart2, RxBuffer, RxBuffer_Size);
+		__HAL_DMA_DISABLE_IT(&hdma_usart2_rx, DMA_IT_HT);
+	}
+}
+
+void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim) {
+	if (htim->Instance == TIM16) {
+		motor.actCount = __HAL_TIM_GET_COUNTER(&htim2);
+		countRPM();
+		pid();
+	}
+}
 /* USER CODE END 4 */
 
 /**

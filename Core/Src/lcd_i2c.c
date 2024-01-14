@@ -72,7 +72,7 @@ void lcd_write(uint8_t addr, uint8_t data, uint8_t xpin)
 
 	/* send data via i2c */
 	HAL_I2C_Master_Transmit(&HI2C_DEF, addr, tx_data, 4, 100);
-	delay_us(100);
+	delay_us(120);
 	//HAL_Delay(1);
 }
 
