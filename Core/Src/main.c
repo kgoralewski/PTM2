@@ -196,13 +196,19 @@ int main(void)
 
 		downReading = HAL_GPIO_ReadPin(RPM_DOWN_GPIO_Port, RPM_DOWN_Pin);
 		if (downReading == 1 && lastDownReading == 0) {
-			motor.setRpm = motor.setRpm - 20;
+			motor.setRpm = motor.setRpm - 10;
+			if (motor.setRpm < 150) {
+				motor.setRpm = -150;
+			}
 		}
 		lastDownReading = downReading;
 
 		upReading = HAL_GPIO_ReadPin(RPM_UP_GPIO_Port, RPM_UP_Pin);
 		if (upReading == 1 && lastUpReading == 0) {
-			motor.setRpm = motor.setRpm + 20;
+			motor.setRpm = motor.setRpm + 10;
+			if (motor.setRpm > 150) {
+				motor.setRpm = 150;
+			}
 		}
 		lastUpReading = upReading;
 
@@ -355,6 +361,7 @@ void countRPM(){
 }
 
     void procesData(){
+    	int buf;
 	switch (RxBuffer[0]) {
 		case 'R':
 			motor.state = RUN;
@@ -363,7 +370,10 @@ void countRPM(){
 			motor.state = STOP;
 			break;
 		case 'P':
-			motor.setRpm = atoi((const char*)RxBuffer+2);
+			 buf = atoi((const char*)RxBuffer+2);
+			 if (buf < 150 && buf > -150) {
+				 motor.setRpm = buf;
+			}
 			break;
 		default:
 			break;
