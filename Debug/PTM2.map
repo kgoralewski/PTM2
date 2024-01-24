@@ -4305,23 +4305,22 @@ LOAD C:/ST/STM32CubeIDE_1.14.0/STM32CubeIDE/plugins/com.st.stm32cube.ide.mcu.ext
  .text.lcd_clear
                 0x0000000008001074       0x30 ./Core/Src/lcd_i2c.o
                 0x0000000008001074                lcd_clear
- .text.main     0x00000000080010a4      0x268 ./Core/Src/main.o
+ .text.main     0x00000000080010a4      0x26c ./Core/Src/main.o
                 0x00000000080010a4                main
  .text.SystemClock_Config
-                0x000000000800130c       0xdc ./Core/Src/main.o
-                0x000000000800130c                SystemClock_Config
+                0x0000000008001310       0xdc ./Core/Src/main.o
+                0x0000000008001310                SystemClock_Config
  .text.displayNormal
-                0x00000000080013e8       0x88 ./Core/Src/main.o
-                0x00000000080013e8                displayNormal
+                0x00000000080013ec       0x88 ./Core/Src/main.o
+                0x00000000080013ec                displayNormal
  .text.displayOverheat
-                0x0000000008001470       0x50 ./Core/Src/main.o
-                0x0000000008001470                displayOverheat
+                0x0000000008001474       0x50 ./Core/Src/main.o
+                0x0000000008001474                displayOverheat
  .text.sendData
-                0x00000000080014c0       0x4c ./Core/Src/main.o
-                0x00000000080014c0                sendData
- .text.setDir   0x000000000800150c       0x58 ./Core/Src/main.o
-                0x000000000800150c                setDir
- *fill*         0x0000000008001564        0x4 
+                0x00000000080014c4       0x4c ./Core/Src/main.o
+                0x00000000080014c4                sendData
+ .text.setDir   0x0000000008001510       0x58 ./Core/Src/main.o
+                0x0000000008001510                setDir
  .text.temp     0x0000000008001568       0xf4 ./Core/Src/main.o
                 0x0000000008001568                temp
  *fill*         0x000000000800165c        0x4 

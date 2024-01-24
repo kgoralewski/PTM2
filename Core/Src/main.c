@@ -158,7 +158,7 @@ int main(void)
 	HAL_UARTEx_ReceiveToIdle_DMA(&huart2, RxBuffer, RxBuffer_Size);
 	__HAL_DMA_DISABLE_IT(&hdma_usart2_rx, DMA_IT_HT);
 
-	lcd_init(&disp);
+
 
 
   /* USER CODE END 2 */
@@ -166,7 +166,7 @@ int main(void)
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
 
-
+	lcd_init(&disp);
 	while (1) {
 
 
@@ -197,8 +197,8 @@ int main(void)
 		downReading = HAL_GPIO_ReadPin(RPM_DOWN_GPIO_Port, RPM_DOWN_Pin);
 		if (downReading == 1 && lastDownReading == 0) {
 			motor.setRpm = motor.setRpm - 10;
-			if (motor.setRpm < 150) {
-				motor.setRpm = -150;
+			if (motor.setRpm < -160) {
+				motor.setRpm = -160;
 			}
 		}
 		lastDownReading = downReading;
@@ -206,8 +206,8 @@ int main(void)
 		upReading = HAL_GPIO_ReadPin(RPM_UP_GPIO_Port, RPM_UP_Pin);
 		if (upReading == 1 && lastUpReading == 0) {
 			motor.setRpm = motor.setRpm + 10;
-			if (motor.setRpm > 150) {
-				motor.setRpm = 150;
+			if (motor.setRpm > 160) {
+				motor.setRpm = 160;
 			}
 		}
 		lastUpReading = upReading;
